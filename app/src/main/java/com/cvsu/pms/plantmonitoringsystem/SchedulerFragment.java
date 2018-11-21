@@ -18,29 +18,6 @@ public class SchedulerFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_scheduler, container, false);
 
-        button_on = rootView.findViewById(R.id.button_on);
-        button_off = rootView.findViewById(R.id.button_off);
-
-
-
-        button_on.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v) {
-                SettingFragment sf = new SettingFragment();
-                sf.turnOnLed();
-            }
-        });
-
-        button_off.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v) {
-                SettingFragment sf = new SettingFragment();
-                sf.turnOffLed();
-            }
-        });
-
         return rootView;
     }
 }
