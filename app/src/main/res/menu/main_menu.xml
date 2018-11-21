@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/menu_environment"
+            android:icon="@drawable/ic_local_florist_black_24dp"
+            android:title="Environment"/>
+        <item
+            android:id="@+id/menu_scheduler"
+            android:icon="@drawable/ic_access_time_black_24dp"
+            android:title="Scheduler"/>
+        <item
+            android:id="@+id/menu_device"
+            android:icon="@drawable/ic_settings_black_24dp"
+            android:title="Device"/>
+        <item
+            android:id="@+id/menu_about"
+            android:icon="@drawable/ic_accessibility_black_24dp"
+            android:title="About"/>
+    </group>
+</menu>
