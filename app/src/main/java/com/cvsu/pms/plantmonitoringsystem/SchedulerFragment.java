@@ -216,8 +216,8 @@ public class SchedulerFragment extends Fragment {
                 Log.e(TAG,"SchedulerFragment.durations: "+e.getMessage());
             }
             Log.d(TAG,diffHours+":"+diffMinutes);
-            String hr = Long.toString(diffHours);
-            String mins = Long.toString(diffMinutes);
+            String hr = Long.toString(Math.abs(diffHours));
+            String mins = Long.toString(Math.abs(diffMinutes));
             if(Long.toString(diffHours).length()==1){
                 hr = "0" + hr;
             }
