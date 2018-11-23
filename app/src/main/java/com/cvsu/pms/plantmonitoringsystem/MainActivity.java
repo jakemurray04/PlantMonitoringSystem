@@ -1,5 +1,6 @@
 package com.cvsu.pms.plantmonitoringsystem;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
 
@@ -18,7 +19,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private NavigationView navigationView;
     private ActionBarDrawerToggle toggle;
     private Toolbar toolbar;
-
+    public static int spinnerRes;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigationView.setCheckedItem(R.id.menu_device);
             getSupportActionBar().setTitle("Device");
         }
+        spinnerRes = android.R.layout.simple_spinner_dropdown_item;
     }
 
     @Override
