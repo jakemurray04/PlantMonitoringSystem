@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.support.annotation.IntegerRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -35,6 +36,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimerTask;
 import java.util.TreeMap;
 
 import static com.cvsu.pms.plantmonitoringsystem.MainActivity.spinnerRes;
@@ -48,6 +50,8 @@ public class SchedulerFragment extends Fragment {
     private TimePicker timePicker;
     private Spinner spinner;
     private String spinnerHead, timePicked;
+    private String toRemove;
+    FloatingActionButton fab;
     String TAG = "MyLog";
 
     SimpleDateFormat inputParser = new SimpleDateFormat("HH:mm");
@@ -68,21 +72,14 @@ public class SchedulerFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_scheduler, container, false);
         spinner = rootView.findViewById(R.id.spinner);
 
-        FloatingActionButton fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
-        schedules = new TreeMap<>();
-
-        ArrayList<PlantSched> plantScheds = new ArrayList<>();
-
         spinnerHead = "";
         timePicked = "";
+        toRemove = "";
+
+        schedules = new TreeMap<>();
+        schedules.putAll(PlantSched.updateLocalSchedules(getContext()));
+        ArrayList<PlantSched> plantScheds = new ArrayList<>();
+
         tmpSched = new ArrayList<>(plantScheds);
 
         updateSpinner();
@@ -109,12 +106,7 @@ public class SchedulerFragment extends Fragment {
 
                             @Override
                             public void onDismissedBySwipeLeft(RecyclerView recyclerView, int[] reverseSortedPositions) {
-                                for (int position : reverseSortedPositions) {
-                                    schedules.get(spinnerHead).remove(position);
-                                    tmpSched.remove(position);
-                                    schedulerAdapter.notifyItemRemoved(position);
-                                }
-                                schedulerAdapter.notifyDataSetChanged();
+
                             }
 
                             @Override
@@ -122,6 +114,7 @@ public class SchedulerFragment extends Fragment {
                                 for (int position : reverseSortedPositions) {
                                     schedules.get(spinnerHead).remove(position);
                                     tmpSched.remove(position);
+                                    schedules.putAll(PlantSched.updateLocalSchedules(getContext()));
                                     schedulerAdapter.notifyItemRemoved(position);
                                 }
                                 schedulerAdapter.notifyDataSetChanged();
@@ -136,24 +129,49 @@ public class SchedulerFragment extends Fragment {
                 addPlant();
             }
         });
+        rootView.findViewById(R.id.button_Delete).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                toRemove = spinnerHead;
+                schedules.remove(spinnerHead);
+                tmpSched.clear();
+                updateSpinner();
+            }
+        });
 
-        rootView.findViewById(R.id.fab).setOnClickListener(new View.OnClickListener() {
+        fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 addScheduleTime();
             }
         });
+        //updateDurations();
+        if(spinnerHead.isEmpty()){
+            Log.d("durations","spinnerHead.empty");
+            try{
+                spinnerHead = schedules.firstKey();
+                updateRecyclerView(spinnerHead);
+            }catch (Exception e){
+                Log.d("durations","spinner.e");
+            }
+            Log.d("durations",spinnerHead);
+        }
         return rootView;
     }
 
     private void timePicked(String t){
         timePicked = t;
     }
-
     private void addScheduleTime(){
-
+        if(spinnerHeadPos(spinnerHead)>-1){
+            Log.d(TAG,"occupiedSpinner");
+        }else{
+            Log.d(TAG,"emptySpinner");
+            return;
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setCancelable(true);
+        builder.setCancelable(false);
         builder.setTitle("Add New Time");
         LayoutInflater inflater = this.getLayoutInflater();
 
@@ -165,7 +183,7 @@ public class SchedulerFragment extends Fragment {
         timePicker.setOnTimeChangedListener(new TimePicker.OnTimeChangedListener() {
             @Override
             public void onTimeChanged(TimePicker timePicker, int i, int i1) {
-                timePicked(i+":"+i1);
+                timePicked(i+":"+(i1<10?"0"+i1:i1));
             }
         });
 
@@ -174,8 +192,7 @@ public class SchedulerFragment extends Fragment {
             public void onClick(DialogInterface dialogInterface, int i) {
                 String str = timePicked.replaceAll("\\s+","");
                 if(!str.isEmpty() && spinnerHeadPos(spinnerHead)>-1){
-                    schedules.get(spinnerHead).add(new PlantSched(str).setDuration("0"));
-                    updateDurations();
+                    schedules.get(spinnerHead).add(new PlantSched(str));
                     updateRecyclerView(spinnerHead);
                 }
             }
@@ -191,10 +208,9 @@ public class SchedulerFragment extends Fragment {
 
     }
     private void updateDurations(){
-        int size = schedules.get(spinnerHead).size();
-        for(int i = 0; i<size; i++){
-
-            String timeStop = schedules.get(spinnerHead).get(i).getTime();
+        Log.d("durations","start");
+        for(PlantSched tmp_sched:tmpSched){
+            String timeStop = tmp_sched.getTime();
             Calendar now = Calendar.getInstance();
             long diffMinutes = 0;
             long diffHours = 0;
@@ -204,7 +220,7 @@ public class SchedulerFragment extends Fragment {
                 d1 = parseTime(now.get(Calendar.HOUR_OF_DAY) + ":" + now.get(Calendar.MINUTE));
                 d2 = parseTime(timeStop);
 
-                //in milliseconds
+                //in milliseconds4
                 long diff = d2.getTime() - d1.getTime();
 
                 diffMinutes = diff / (60 * 1000) % 60;
@@ -213,24 +229,30 @@ public class SchedulerFragment extends Fragment {
 
             } catch (Exception e) {
                 //e.printStackTrace();
-                Log.e(TAG,"SchedulerFragment.durations: "+e.getMessage());
+                Log.e("durations",e.getMessage());
             }
-            Log.d(TAG,diffHours+":"+diffMinutes);
-            String hr = Long.toString(Math.abs(diffHours));
-            String mins = Long.toString(Math.abs(diffMinutes));
-            if(Long.toString(diffHours).length()==1){
-                hr = "0" + hr;
+            Log.d("durations",diffHours+":"+diffMinutes);
+            if(diffHours< 0L || diffMinutes< 0L){
+                diffHours = 24L + diffHours;
+                diffMinutes = 59L + diffMinutes;
             }
-            if(Long.toString(diffMinutes).length()==1){
-                mins = "0" + mins;
+            String hr = Long.toString(diffHours)+"hr";
+            String mins = Long.toString(diffMinutes)+"min";
+            if (diffHours> 1L){
+                hr+="s";
             }
-            schedules.get(spinnerHead).get(i).setDuration(hr+":"+mins);
+            if (diffMinutes> 1L){
+                mins+="s";
+            }
+            hr = diffHours== 0L ?"":hr+" ";
+            tmp_sched.setDuration(hr+mins);
         }
+        Log.d("durations","end");
     }
 
     private void addPlant(){
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setCancelable(true);
+        builder.setCancelable(false);
         builder.setTitle("Add a Plant");
         LayoutInflater inflater = this.getLayoutInflater();
 
@@ -241,12 +263,13 @@ public class SchedulerFragment extends Fragment {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 TextInputEditText plant = dialogView.findViewById(R.id.plantName);
-                String str = plant.getText().toString().replaceAll("\\s+","");
-
-                schedules.put(str, new ArrayList<PlantSched>());
-                updateSpinner();
-                spinnerHead = str;
-                spinner.setSelection(spinnerHeadPos(str));
+                String str = plant.getText().toString();
+                if(!str.replaceAll("\\s","").isEmpty()){
+                    schedules.put(str, new ArrayList<PlantSched>());
+                    spinnerHead = str;
+                    updateSpinner();
+                    spinner.setSelection(spinnerHeadPos(str));
+                }
             }
         });
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -258,10 +281,12 @@ public class SchedulerFragment extends Fragment {
     }
 
     private void updateSpinner(){
+        schedules.putAll(PlantSched.updateLocalSchedules(getContext(),toRemove));
 
+        toRemove = "";
         ArrayList<String> plantNames = new ArrayList<>(schedules.keySet());
 
-        ArrayAdapter<String> plants = new ArrayAdapter<String>(getContext(), spinnerRes, plantNames);
+        ArrayAdapter<String> plants = new ArrayAdapter<>(getContext(), spinnerRes, plantNames);
         spinner.setAdapter(plants);
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
 
@@ -273,15 +298,16 @@ public class SchedulerFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {
-
             }
         });
     }
 
     private void updateRecyclerView(String plantName){
+        Log.d("MyLog","updateRecyclerView");
         spinnerHead = plantName;
         tmpSched.clear();
         tmpSched.addAll(schedules.get(plantName));
+        updateDurations();
         schedulerAdapter.notifyDataSetChanged();
     }
 
